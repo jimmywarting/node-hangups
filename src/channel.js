@@ -1,4 +1,4 @@
-'use strict'
+"use strict"
 
 const
 CookieJar  = require('tough-cookie').CookieJar,
@@ -80,7 +80,7 @@ class Channel {
 	 *
 	 * @resolves {sid, gsid} If response was successful
 	 */
-	*fetchSid () {
+	async fetchSid () {
 		var auth = this.authHeaders()
 
 		if(!auth)
@@ -96,8 +96,8 @@ class Channel {
 			}
 		}
 
-		let res = yield this.fetch(CHANNEL_URL, opts)
-		let text = yield res.text()
+		let res = await this.fetch(CHANNEL_URL, opts)
+		let text = await res.text()
 
 		if (res.status !== 200) {
 			debug('failed to get sid', res.statusCode, text)
@@ -141,7 +141,7 @@ class Channel {
 	 * @return {Promise}
 	 * @resolves {Undefined} If channel stops running
 	 */
-	*start () {
+	async start () {
 		var retries = MAX_RETRIES
 		this.running = true
 		this.sid = null // ensures we get a new sid
@@ -151,7 +151,7 @@ class Channel {
 		// graceful stop of polling
 		while(this.running) {
 
-			yield this.poll(retries)
+			await this.poll(retries)
 			.then(() => {
 				// XXX we only reset to MAX_RETRIES after a full ended
 				// poll. this means in bad network conditions we get an
@@ -212,18 +212,18 @@ class Channel {
 	 * @param  {Number}  retries [description]
 	 * @return {Promise}         [description]
 	 */
-	*poll (retries) {
+	async poll (retries) {
 		var backoffTime = 2 * (MAX_RETRIES - retries) * 1000
 		if (backoffTime)
 			debug('backing off for', backoffTime, 'ms')
 
-		yield sleep(backoffTime)
+		await sleep(backoffTime)
 
 		if(!this.running)
 			return Promise.reject(ABORT)
 
 		if (!this.sid) {
-			let o = yield this.fetchSid()
+			let o = await this.fetchSid()
 			Object.assign(this, o)
 			this.pushParser.reset()
 		}
@@ -243,8 +243,8 @@ class Channel {
 	 * @resolves {undefined}    If success
 	 */
 	reqpoll () {
-		// we don't use generator + yield here
-		// sence we don't want to yield meta data + response text
+		// we don't use generator + await here
+		// sence we don't want to await meta data + response text
 		// at the end. We parse data as it comes in
 		//
 		// Guess this is not how node-fetch is inteded to work...
@@ -277,7 +277,7 @@ class Channel {
 
 			// lack motivation to add co-generator in this scope...
 			// You don't always have over do things...
-			/* res = yield */ this.fetch(CHANNEL_URL, opts).then(res => {
+			/* res = await */ this.fetch(CHANNEL_URL, opts).then(res => {
 
 			this.currentReq = res
 
@@ -325,7 +325,7 @@ class Channel {
 				res = res.body = null
 			})
 
-			/* end "yield" */ })
+		/* end "await" */ })
 		})
 	}
 
@@ -340,14 +340,14 @@ class Channel {
 	 * @rejects {[exceptionType]} If [this condition is met]
 	 * @resolves {[exceptionType]} If [this condition is met]
 	 */
-	*subscribe () {
+	async subscribe () {
 		if(this.subscribed)
 			return
 
 		this.subscribed = true
 
 		// https://github.com/tdryer/hangups/issues/58
-		yield sleep(1000)
+		await sleep(1000)
 
 		var timestamp = Date.now() * 1000
 		var opts = {
@@ -376,9 +376,9 @@ class Channel {
 			}
 		}
 
-		let res = yield this.fetch(CHANNEL_URL, opts)
+		let res = await this.fetch(CHANNEL_URL, opts)
 
-		yield res.text()
+		await res.text()
 
 		if (res.status == 200) {
 			debug('subscribed channel')
@@ -395,4 +395,4 @@ class Channel {
 	}
 }
 
-module.exports = require('./wrap').wrap(Channel)
+module.exports = Channel
