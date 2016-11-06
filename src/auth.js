@@ -1,4 +1,5 @@
-"use strict"
+'use strict'
+
 const
 fs           = require('fs'),
 log          = require('debug')('hangup:auth'),
@@ -29,7 +30,7 @@ class Auth {
 
 	// get authentication cookies on the form [{key:<cookie name>, value:<value>}, {...}, ...]
 	// first checks the database if we already have cookies, or else proceeds with login
-	*getAuth() {
+	async getAuth() {
 		log('getting auth...')
 
 		let cookies = this.fetch.jar.getCookiesSync(OAUTH2_LOGIN_URL)
@@ -38,7 +39,7 @@ class Auth {
 			log('using cached cookies')
 		else {
 			log('proceeding to login')
-			yield this.login()
+			await this.login()
 		}
 
 		log('getAuth done')
@@ -49,14 +50,12 @@ class Auth {
 		// fetch creds to inspect what we got to work with
 		var creds = this.creds()
 
-		// if (creds.auth)
+		if (creds.auth)
 			return this.oauthLogin(creds.auth)
-		// else if (creds.cookies)
-
+		else if (creds.cookies) {
 			this.providedCookies(creds.cookies)
 			return Promise.resolve()
-		// else
-		// 	throw new Error("No acceptable creds provided")
+		}
 	}
 
 	// An array of cookie strings to put into the jar
@@ -66,21 +65,21 @@ class Auth {
 	}
 
 
-	*oauthLogin (auth) {
+	async oauthLogin (auth) {
 
 		var atoken
 		// load the refresh-token from disk, and if found
 		// use to get an authentication token.
-		let rtoken = yield this.loadRefreshToken()
+		let rtoken = await this.loadRefreshToken()
 		if(rtoken)
-			atoken = yield this.authWithRefreshToken(rtoken)
+			atoken = await this.authWithRefreshToken(rtoken)
 
 		// use token from refresh-token. just use it.
 		// or no loaded refresh-token. request auth code.
-		atoken = atoken || (yield this.requestAuthCode(auth))
+		atoken = atoken || (await this.requestAuthCode(auth))
 		// one way or another we have an atoken now
 
-		let res = yield this.fetch(UBERAUTH, {
+		let res = await this.fetch(UBERAUTH, {
 			headers: {Authorization: `Bearer ${atoken}`}
 		})
 
@@ -88,14 +87,14 @@ class Auth {
 			throw NetworkError(res)
 
 		log('got uberauth')
-		let uberauth = yield res.text()
+		let uberauth = await res.text()
 
 		// not sure what this is. some kind of cookie warmup call?
-		res = yield this.fetch(MERGE_SESSION)
+		res = await this.fetch(MERGE_SESSION)
 		if(res.status !== 200)
 			throw NetworkError(res)
 
-		yield this.fetch(MERGE_SESSION_MAIL + uberauth, {redirect: 'manual'})
+		await this.fetch(MERGE_SESSION_MAIL + uberauth, {redirect: 'manual'})
 	}
 
 	loadRefreshToken() {
@@ -117,10 +116,10 @@ class Auth {
 		return promisify(fs.writeFile)(path, rtoken)
 	}
 
-	*authWithRefreshToken(rtoken) {
+	async authWithRefreshToken(rtoken) {
 		log('auth with refresh token')
 
-		let res = yield this.fetch(OAUTH2_TOKEN_URL, {
+		let res = await this.fetch(OAUTH2_TOKEN_URL, {
 			method: 'POST',
 			formData: {
 				client_id     : OAUTH2_CLIENT_ID,
@@ -132,18 +131,18 @@ class Auth {
 
 		if (res.status == 200) {
 			log('refresh token success')
-			return (yield res.json()).access_token
+			return (await res.json()).access_token
 		} else {
-			log(yield res.text())
+			log(await res.text())
 			throw NetworkError(res)
 		}
 
 	}
 
 	// request auth code from user
-	*requestAuthCode(auth) {
+	async requestAuthCode(auth) {
 
-		let code = yield auth()
+		let code = await auth()
 
 		let opts = {
 			method: 'POST',
@@ -157,18 +156,18 @@ class Auth {
 		}
 
 		// requesting refresh token
-		let res = yield this.fetch(OAUTH2_TOKEN_URL, opts)
+		let res = await this.fetch(OAUTH2_TOKEN_URL, opts)
 		if (res.status == 200) {
 			log('auth with code success')
-			let json = yield res.json()
+			let json = await res.json()
 
 			// save it and then return the access token
-			yield this.saveRefreshToken(json.refresh_token)
+			await this.saveRefreshToken(json.refresh_token)
 
 			return json.access_token
 		}
 
-		log(yield res.text())
+		log(await res.text())
 		throw NetworkError(res)
 	}
 
@@ -196,4 +195,4 @@ class Auth {
 // Expose this to Client
 Auth.prototype.OAUTH2_LOGIN_URL = OAUTH2_LOGIN_URL
 
-module.exports = require('./wrap').wrap(Auth)
+module.exports = Auth
