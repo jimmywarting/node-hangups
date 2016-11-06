@@ -1,4 +1,4 @@
-"use strict"
+'use strict'
 
 const
 CookieJar  = require('tough-cookie').CookieJar,
@@ -108,7 +108,7 @@ class Channel {
 		// [ [0,["c","SID_HERE","",8]],
 		//   [1,[{"gsid":"GSESSIONID_HERE"}]] ]
 
-		let p = new PushParser(Buffer(text)),
+		let p = new PushParser(Buffer.from(text)),
 			line = p.pop(),
 			result = {
 				sid: line[0][1][1],
