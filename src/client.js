@@ -1,4 +1,5 @@
-"use strict"
+'use strict'
+
 const
 ABORT           = Symbol(),
 CookieJar       = require('tough-cookie').CookieJar,
@@ -80,9 +81,9 @@ class Client extends EventEmitter {
 		log.level(lvl)
 	}
 
-	// Do we dear to change this promise change to yields?
+	// Do we dear to change this promise change to awaits?
 	// catch can throw for many diffrent reason...
-	*connect (creds) {
+	async connect (creds) {
 	    // tell the world what we're doing
         this.emit('connecting')
         // create a new auth instance
@@ -90,13 +91,13 @@ class Client extends EventEmitter {
         // getAuth does a login and stores the cookies
         // of the login into the db. the cookies are
         // cached.
-        yield this.auth.login()
-
+        await this.auth.login()
         this.running = true
         this.connected = false
         // ensure we have a fresh timestamp
         this.lastActive = Date.now()
         this.ensureConnected()
+
         var poller = () => {
             if(!this.running)
             	return
@@ -139,7 +140,7 @@ class Client extends EventEmitter {
 
 	// we get at least a "noop" event every 20-30 secs, if we have no
 	// event after 45 secs, we must suspect a network interruption
-	*ensureConnected () {
+	async ensureConnected () {
 
 		// and no ensuring unless we're connected
 		while (this.running) {
@@ -153,7 +154,7 @@ class Client extends EventEmitter {
 			}
 
 			let waitFor = this.lastActive + ALIVE_WAIT - Date.now()
-			yield sleep(waitFor)
+			await sleep(waitFor)
 		}
 
 	}
@@ -166,7 +167,7 @@ class Client extends EventEmitter {
 	 * @return {[type]} [description]
 	 */
 	disconnect () {
-        log.info('Disconnecting gracefully...')
+    log.info('Disconnecting gracefully...')
 		debug('disconnect')
 		this.running = false
 		this.connected = false
@@ -221,7 +222,7 @@ class Client extends EventEmitter {
 	// return all events occuring in.
 	//
 	// returns a parsed CLIENT_SYNC_ALL_NEW_EVENTS_RESPONSE
-	*syncAllNewEvents (timestamp) {
+	syncAllNewEvents (timestamp) {
 		return this.chatreq.req('conversations/syncallnewevents', [
 			this._requestBodyHeader(),
 			togoogtime(timestamp),
@@ -474,8 +475,8 @@ class Client extends EventEmitter {
 	// This is mainly used for retrieving conversation
 	// scrollback. Events occurring before timestamp are returned, in
 	// order from oldest to newest.
-	*getConversation (conversation_id, timestamp, max_events) {
-		let body = yield this.chatreq.req('conversations/getconversation', [
+	async getConversation (conversation_id, timestamp, max_events) {
+		let body = await this.chatreq.req('conversations/getconversation', [
 			this._requestBodyHeader(),
 			[[conversation_id], [], []],  // conversationSpec
 			false,                        // includeConversationMetadata
@@ -500,8 +501,8 @@ class Client extends EventEmitter {
 	// given date range.
 	//
 	// returns a parsed CLIENT_SYNC_ALL_NEW_EVENTS_RESPONSE (same structure)
-	*syncRecentConversations() {
-		let body = yield this.chatreq.req('conversations/syncrecentconversations', [
+	async syncRecentConversations() {
+		let body = await this.chatreq.req('conversations/syncrecentconversations', [
 			this._requestBodyHeader()
 		])
 
@@ -528,8 +529,8 @@ class Client extends EventEmitter {
 	 * @param  {[type]} chat_ids [description]
 	 * @return {Promise}          [description]
 	 */
-	*getEntityById (chat_ids) {
-		let body = yield this.chatreq.req('contacts/getentitybyid', [
+	async getEntityById (chat_ids) {
+		let body = await this.chatreq.req('contacts/getentitybyid', [
 			this._requestBodyHeader(),
 			undefined,
 			chat_ids
@@ -571,7 +572,7 @@ class Client extends EventEmitter {
 	 * @param  {Number} timeout   When we should cancle
 	 * @return {Number}           photo id that can be attached to a msg
 	 */
-	*uploadImage (imageFile, fileName, timeout) {
+	async uploadImage (imageFile, fileName, timeout) {
 		// either use provided or from path
 		fileName = fileName || syspath.basename(imageFile)
 		var size
@@ -579,10 +580,10 @@ class Client extends EventEmitter {
 		var chatreq = this.chatreq
 
 		// figure out file size
-		size = (yield fs.statAsync(imageFile)).size
+		size = (await fs.statAsync(imageFile)).size
 		debug('image resume upload prepare')
 
-		let body = yield chatreq.baseReq(IMAGE_UPLOAD_URL, 'application/x-www-form-urlencoded;charset=UTF-8' , {
+		let body = await chatreq.baseReq(IMAGE_UPLOAD_URL, 'application/x-www-form-urlencoded;charset=UTF-8' , {
 			protocolVersion: "0.8",
 			createSessionRequest: {
 				fields: [{
@@ -599,10 +600,10 @@ class Client extends EventEmitter {
 		puturl = body.sessionStatus.externalFieldTransfers[0].putInfo.url
 		debug('image resume upload to:', puturl)
 
-		let buf = yield fs.readFileAsync(imageFile)
+		let buf = await fs.readFileAsync(imageFile)
 
 		debug('image resume uploading')
-		body = yield chatreq.baseReq(puturl, 'application/octet-stream', buf, true, timeout || 30000)
+		body = await chatreq.baseReq(puturl, 'application/octet-stream', buf, true, timeout || 30000)
 
 		debug('image resume upload finished')
 		return body.sessionStatus.additionalInfo['uploader_service.GoogleRupioAdditionalInfo'].completionInfo.customerSpecificInfo.photoid
@@ -618,4 +619,4 @@ Client.authStdin = Auth.authStdin
 Client.NotificationLevel = ClientNotificationLevel
 // Client.OAUTH2_LOGIN_URL = Auth.OAUTH2_LOGIN_URL
 
-module.exports = require('./wrap').wrap(Client)
+module.exports = Client
