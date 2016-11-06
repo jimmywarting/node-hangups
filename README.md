@@ -1,3 +1,6 @@
+**Requires node >= 7**
+node --harmony-async-await app
+
 hangupsjs
 =========
 
