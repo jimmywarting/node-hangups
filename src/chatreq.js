@@ -20,7 +20,7 @@ class ChatReq {
 	//
 	// These cookies are typically submitted:
 	// NID, SID, HSID, SSID, APISID, SAPISID
-	*baseReq (url, contenttype, body, json, timeout, req_pb, res_pb) {
+	async baseReq (url, contenttype, body, json, timeout, req_pb, res_pb) {
 		var headers, opts
 
 		if(res_pb) json = false
@@ -29,25 +29,18 @@ class ChatReq {
 		if (timeout == null) timeout = 30000
 
 		headers = this.channel.authHeaders()
-
 		if (!headers)
-			throw new Error("No auth headers")
+			throw new Error('No auth headers')
 
 		headers['Content-Type'] = contenttype
 
-		url += `?alt=json`
-
-		opts = {
-			method: 'POST',
-			headers: headers,
-			body: Buffer.isBuffer(body) ? body : JSON.stringify(body)
-		}
+		url += '?alt=json&key=AIzaSyAfFJCeph-euFSwtmqFZi0kaKk-cZ5wufM'
 
 		let resType = json
-		let res = yield this.fetch(url, {
-			method: 'post',
-			headers: headers,
-			body: Buffer.isBuffer(body) ? body : JSON.stringify(body),
+		let res = await this.fetch(url, {
+			method: 'POST',
+			headers,
+			body: Buffer.isBuffer(body) ? body : JSON.stringify(body)
 		})
 
 		if( !resType && res.headers.get('content-type').includes('application/json;') )
@@ -56,11 +49,10 @@ class ChatReq {
 			resType = 'text'
 
 
-		let resBody = yield res[res_pb? 'text':'json']()
+		let resBody = await res[res_pb ? 'text':'json']()
 
-		if (res.status === 200) {
+		if (res.ok)
 			return resBody
-		}
 
 		throw NetworkError(res)
 	}
@@ -82,11 +74,10 @@ class ChatReq {
 	// throws:
 	//     NetworkError: If the request fails.
 	//
-	*pb_request (endpoint, request_pb, response_pb){
-
+	async pb_request (endpoint, request_pb, response_pb){
 		// TODO: figure out how to get json+protobuf representation
 		//       or make x-protobuf to work
-		let resBody = yield this.base_request(
+		let resBody = await this.base_request(
 			`https://clients6.google.com/chat/v1/${endpoint}`,
 			'application/x-protobuf', // Request body is Protocol Buffer.
 			'proto', // Response body is Protocol Buffer.
@@ -124,4 +115,4 @@ class ChatReq {
 	}
 }
 
-module.exports = require('./wrap').wrap(ChatReq)
+module.exports = ChatReq
