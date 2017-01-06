@@ -28,7 +28,7 @@
     "debug": "^2.2.0",
     "form-data": "^2.1.2",
     "node-fetch": "^1.5.2",
-    "protobufjs": "^6.0.0",
+    "protobufjs": "^6.4.3",
     "tiny-promisify": "^1.0.0",
     "tough-cookie": "^2.2.2",
     "tough-cookie-filestore": "0.0.1",
