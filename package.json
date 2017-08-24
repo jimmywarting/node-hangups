@@ -25,7 +25,7 @@
   "homepage": "https://github.com/jimmywarting/node-hangups",
   "dependencies": {
     "co": "^4.6.0",
-    "debug": "^2.2.0",
+    "debug": "^3.0.1",
     "form-data": "^2.1.2",
     "node-fetch": "^1.5.2",
     "protobufjs": "^6.0.0",
